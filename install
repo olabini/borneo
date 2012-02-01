@@ -1,4 +1,5 @@
 #!/bin/sh
 
 lein jar
-mvn install:install-file -DgroupId=kalimantan -DartifactId=kalimantan -Dversion=0.0.1 -Dpackaging=jar -Dfile=kalimantan-0.0.1.jar
+lein pom
+mvn install:install-file -DgroupId=kalimantan -DartifactId=kalimantan -Dversion=0.0.1 -Dpackaging=jar -Dfile=kalimantan-0.0.1.jar -DpomFile=pom.xml
