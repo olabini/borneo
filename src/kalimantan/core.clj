@@ -234,6 +234,12 @@
 
 ;;;; Public API
 
+(defn upgrade-db!
+  [path]
+  (io!)
+  (let [n (EmbeddedGraphDatabase. path {"allow_store_upgrade" "true"})]
+    (.shutdown n)))
+
 (defn start!
   "Establish a connection to the database.
   Uses *neo-db* Var to hold the connection.
