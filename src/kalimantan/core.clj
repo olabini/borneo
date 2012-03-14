@@ -51,6 +51,8 @@
            :dynamic true}
   *neo-db* nil)
 
+(def current-tx (ref nil))
+
 (defn- array?
   "Determines whether x is an array or not."
   [x]
@@ -392,6 +394,23 @@
                          (encode-property-value value)))
          (.removeProperty c (encode-property-key key))))))
 
+(defn set-prop-no-new-tx!
+  "Sets or remove property for a given node or relationship.
+  The property value must be one of the valid property types 
+  (see Neo4j docs) or a keyword.
+  If a property value is nil, removes this property from the given
+  node or relationship."
+  ([^PropertyContainer c key]
+     (set-prop-no-new-tx! c key nil))
+  ([^PropertyContainer c key value]
+     (io!)
+     (if (not (nil? value))
+       (.setProperty c (encode-property-key key)
+                     (if (coll? value) ; handle multiple values
+                       (into-array (map encode-property-value value))
+                       (encode-property-value value)))
+       (.removeProperty c (encode-property-key key)))))
+
 (defn set-props!
   "Sets properties for a given node or relationship.
   The property value must be one of the valid property types 
@@ -403,6 +422,17 @@
   (with-tx
     (doseq [[k v] props]
       (set-prop! c k v))))
+
+(defn set-props-no-new-tx!
+  "Sets properties for a given node or relationship.
+  The property value must be one of the valid property types 
+  (see Neo4j docs) or a keyword.
+  If a property value is nil, removes this property from the given
+  node or relationship. This is a convenience function."
+  [^PropertyContainer c props]
+  (io!)
+  (doseq [[k v] props]
+    (set-prop-no-new-tx! c k v)))
 
 (defn get-id
   "Returns id for a given node or relationship.
@@ -465,6 +495,12 @@
   (io!)
   (with-tx
     (.createRelationshipTo from to (rel-type* type))))
+
+(defn create-rel-no-new-tx!
+  "Creates relationship of a supplied type between from and to nodes."
+  [^Node from type ^Node to]
+  (io!)
+  (.createRelationshipTo from to (rel-type* type)))
 
 (defn all-rel-types
   "Returns lazy seq of all relationship types currently in database."
@@ -552,6 +588,15 @@
        (doto (create-node!)
          (set-props! props)))))
 
+(defn create-node-no-new-tx!
+  "Creates a new node, not linked with any other nodes."
+  ([]
+     (io!)
+     (.createNode *neo-db*))
+  ([props]
+     (doto (create-node-no-new-tx!)
+       (set-props-no-new-tx! props))))
+
 (declare root)
 
 (defn create-child!
@@ -567,6 +612,19 @@
        (let [child (create-node! props)]
          (create-rel! node type child)
          child))))
+
+(defn create-child-no-new-tx!
+  "Creates a node that is a child of the specified parent node
+  (or root node) along the specified relationship.
+  props is a map that defines the properties of the node.
+  This is a convenience function."
+  ([type props]
+     (create-child-no-new-tx! (root) type props))
+  ([node type props]
+     (io!)
+     (let [child (create-node-no-new-tx! props)]
+       (create-rel-no-new-tx! node type child)
+       child)))
 
 (defn delete-node!
   "Delete node and all its relationships.
