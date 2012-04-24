@@ -322,6 +322,7 @@
 (declare rels)
 
 (declare delete!)
+(declare delete-no-new-tx!)
 
 (declare get-id)
 
@@ -447,6 +448,13 @@
   (io!)
   (with-tx
     (.delete item)))
+
+(defn delete-no-new-tx!
+  "Deletes node or relationship.
+  Only node which has no relationships attached to it can be deleted."
+  [item]
+  (io!)
+  (.delete item))
 
 ;;; Relationships
 
@@ -635,6 +643,15 @@
     (doseq [r (rels node)]
       (delete! r))
     (delete! node)))
+
+(defn delete-node-no-new-tx!
+  "Delete node and all its relationships.
+  This is a convenience function."
+  [node]
+  (io!)
+  (doseq [r (rels node)]
+    (delete! r))
+  (delete! node))
 
 ;;; Graph traversal helpers
 
